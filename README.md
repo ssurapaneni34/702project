@@ -1,8 +1,7 @@
-# 702project
+# Agent-Augmented Sequence Modeling for Explainable ICU Diagnosis Prediction
 
-Proposal document: https://www.overleaf.com/project/6994a546106cae16f283698b
+This project investigates whether a multi-agent LLM reasoning layer can improve early ICU diagnosis prediction from electronic health record time-series data.
 
-Potential Project Ideas:
-- Patient-Condition Manifolds from EHR + Knowledge Graphs: Using MIMIC and PrimeKG, encode patient trajectories using a temporal encoder and use contrastive learning to group similar patients. This would allow us to learn a continuous patient manifold where geometry reflects disease progression and treatment response instead of discrete ICD codes.
-- Clinically Grounded Counterfactual Explanations for Existing Risk Prediction Models: We would develop a counterfactual explanation framework for clinical risk models that generates minimal interventions to change patient outcomes while enforcing biomedical plausibility/constraints derived from clinical knowledge graphs and domain expertise.
-- Evaluating Biomedical Knowledge Graphs for Fairness and Bias: We would study structural and representational imbalance in biomedical KGs and its implications for discovery
+We first train a baseline LSTM model on the MIMIC-IV dataset to predict primary ICD-10 diagnoses from the first 12 hours of ICU admission. At inference time, a team of specialized LLM agents evaluates the model’s top candidate diagnoses by generating clinical rationales, and a ranking agent selects the final prediction—without retraining the underlying model.
+
+The goal is to enhance diagnostic accuracy and interpretability by combining deep learning with structured AI reasoning, providing a scalable way to augment existing clinical prediction systems.
