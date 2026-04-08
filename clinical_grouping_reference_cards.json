@@ -1,0 +1,1082 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "created": "2026-04-07",
+    "description": "Reference cards for ICU Clinical Grouping Evidence Agent System",
+    "model": "LSTM predicting top-5 of 21 clinical groupings from 12hr ICU vitals",
+    "source_data": "MIMIC-IV primary ICD-10 diagnoses",
+    "usage": "Each Evidence Agent receives one card + patient data summary to generate clinical reasoning justification"
+  },
+  "clinical_groupings": {
+    "HEART_FAILURE": {
+      "icd10_codes": [
+        "I130",
+        "I110",
+        "I5033",
+        "I5023",
+        "I132"
+      ],
+      "definition": "Inability of the heart to pump sufficient blood to meet metabolic demands. HFrEF (EF\u226440%), HFmrEF (EF 41-49%), HFpEF (EF\u226550%). Acute decompensation triggered by ischemia, arrhythmia, infection, dietary indiscretion, medication non-adherence.",
+      "vital_sign_patterns": {
+        "heart_rate": "Tachycardia (compensatory); may be bradycardic if on beta-blockers or with conduction disease",
+        "blood_pressure": "Can be hypertensive (flash pulmonary edema) or hypotensive (cardiogenic shock); narrow pulse pressure suggests low output",
+        "respiratory_rate": "Elevated (>20) from pulmonary congestion; Cheyne-Stokes pattern possible",
+        "spo2": "Reduced due to pulmonary edema; may require high FiO2 or NIV",
+        "characteristic_pattern": "Tachycardia + tachypnea + hypoxemia + elevated JVP + peripheral edema"
+      },
+      "key_labs": {
+        "bnp_ntprobnp": "BNP >100 pg/mL or NT-proBNP >300 pg/mL supports diagnosis; higher levels = worse prognosis",
+        "troponin": "May be elevated from demand ischemia or acute coronary syndrome trigger",
+        "creatinine": "Cardiorenal syndrome common; rising Cr limits diuretic efficacy",
+        "sodium": "Hyponatremia (<135) indicates neurohormonal activation and worse prognosis",
+        "lactate": "Elevated in cardiogenic shock indicating tissue hypoperfusion"
+      },
+      "diagnostic_criteria": {
+        "guideline": "ACC/AHA 2022",
+        "stages": {
+          "A": "At risk, no structural disease or symptoms",
+          "B": "Structural disease, no symptoms",
+          "C": "Structural disease with current or prior symptoms",
+          "D": "Advanced HF requiring specialized interventions"
+        },
+        "nyha_class": {
+          "I": "No limitation",
+          "II": "Slight limitation, comfortable at rest",
+          "III": "Marked limitation, comfortable only at rest",
+          "IV": "Symptoms at rest"
+        }
+      },
+      "red_flags": [
+        "Cardiogenic shock (SBP <90, signs of hypoperfusion)",
+        "Respiratory failure requiring intubation",
+        "New/worsening renal failure",
+        "Refractory to IV diuretics",
+        "Sustained ventricular arrhythmias",
+        "Acute coronary syndrome as trigger"
+      ],
+      "key_differentiators": {
+        "vs_PNEUMONIA": "Both cause dyspnea/hypoxia; HF has elevated BNP, bilateral edema, response to diuretics; pneumonia has fever, focal consolidation, elevated procalcitonin",
+        "vs_COPD_ASTHMA": "Both cause dyspnea; HF has elevated BNP, bilateral crackles, peripheral edema; COPD has wheezing, hyperinflation, response to bronchodilators",
+        "vs_ACUTE_MI": "MI can cause acute HF; check troponin trend, ECG for ischemic changes"
+      },
+      "sources": [
+        "Heidenreich PA et al. 2022 AHA/ACC/HFSA Guideline for the Management of Heart Failure. Circulation 2022;145:e895-e1032",
+        "McDonagh TA et al. 2021 ESC Guidelines for diagnosis and treatment of acute and chronic HF. Eur Heart J 2021;42:3599-3726"
+      ]
+    },
+    "SEPSIS": {
+      "icd10_codes": [
+        "A419",
+        "A4151",
+        "A4189",
+        "A4159",
+        "A4101"
+      ],
+      "definition": "Life-threatening organ dysfunction caused by dysregulated host response to infection. Septic shock = sepsis + vasopressor requirement + lactate >2 despite adequate fluid resuscitation.",
+      "vital_sign_patterns": {
+        "heart_rate": "Tachycardia (>90-100 bpm) - early and sensitive sign",
+        "blood_pressure": "Hypotension (MAP <65 or SBP <90); may be normal early then decompensate",
+        "respiratory_rate": "Tachypnea (>22/min) - part of qSOFA",
+        "temperature": "Fever (>38.3\u00b0C) OR hypothermia (<36\u00b0C) - hypothermia worse prognosis",
+        "spo2": "Variable; may need supplemental O2 for target >94%",
+        "characteristic_pattern": "Early (warm shock): tachycardia, warm extremities, wide pulse pressure, bounding pulses. Late (cold shock): hypotension, cool mottled extremities, narrow pulse pressure"
+      },
+      "key_labs": {
+        "lactate": "\u22652 mmol/L indicates tissue hypoperfusion; >4 = severe; serial trending important",
+        "wbc": "Leukocytosis (>12k) or leukopenia (<4k); bandemia (>10% bands)",
+        "procalcitonin": "Elevated supports bacterial infection; helps guide antibiotic duration",
+        "creatinine": "Rising indicates AKI (renal SOFA component)",
+        "bilirubin": "Elevated indicates hepatic dysfunction (hepatic SOFA component)",
+        "platelets": "Falling indicates coagulopathy/DIC (coagulation SOFA component)",
+        "inr_ptt": "Prolonged in DIC"
+      },
+      "diagnostic_criteria": {
+        "guideline": "Sepsis-3 (2016) / Surviving Sepsis Campaign 2021",
+        "sepsis": "Suspected infection + SOFA \u22652 points increase",
+        "septic_shock": "Sepsis + vasopressor to maintain MAP \u226565 + lactate >2 despite adequate fluids",
+        "qsofa": "\u22652 of: RR \u226522, altered mentation, SBP \u2264100 (screening, not diagnostic)",
+        "hour_1_bundle": "Measure lactate, obtain cultures, administer broad-spectrum antibiotics, begin fluids (30 mL/kg crystalloid for hypotension or lactate \u22654), vasopressors if hypotensive during/after fluids"
+      },
+      "red_flags": [
+        "Lactate >4 mmol/L",
+        "Vasopressor requirement",
+        "Altered mental status",
+        "Acute respiratory failure",
+        "Acute kidney injury (oliguria, rising Cr)",
+        "Coagulopathy/DIC",
+        "Refractory hypotension"
+      ],
+      "key_differentiators": {
+        "vs_HEART_FAILURE": "Both cause hypotension and tachycardia; sepsis has infection source, elevated lactate/procalcitonin, warm shock early; HF has elevated BNP, pulmonary edema, cold extremities",
+        "vs_TOXIC_METABOLIC": "AWS has tremor, responds to BZD; DKA has hyperglycemia, ketones, anion gap; both can have SIRS-like picture",
+        "vs_PANCREATITIS": "Severe pancreatitis mimics sepsis; lipase elevated; infected necrosis = true sepsis"
+      },
+      "sources": [
+        "Evans L et al. Surviving Sepsis Campaign: International Guidelines 2021. Intensive Care Med 2021;47:1181-1247",
+        "Singer M et al. The Third International Consensus Definitions for Sepsis (Sepsis-3). JAMA 2016;315:801-810"
+      ]
+    },
+    "TOXIC_METABOLIC": {
+      "icd10_codes": [
+        "F10129",
+        "F10239",
+        "E1165",
+        "F10229",
+        "E871"
+      ],
+      "definition": "Metabolic derangements requiring ICU care including alcohol withdrawal syndrome (AWS), diabetic ketoacidosis (DKA), hyperosmolar hyperglycemic state (HHS), and electrolyte emergencies.",
+      "vital_sign_patterns": {
+        "aws": {
+          "heart_rate": "Tachycardia from sympathetic hyperactivity",
+          "blood_pressure": "Hypertension",
+          "temperature": "Fever, diaphoresis",
+          "characteristic": "Tremor, agitation, hallucinations; delirium tremens 48-96h after last drink"
+        },
+        "dka_hhs": {
+          "respiratory_rate": "Kussmaul breathing (deep, rapid) in DKA from metabolic acidosis",
+          "heart_rate": "Tachycardia from volume depletion",
+          "blood_pressure": "Hypotension if severely volume depleted",
+          "temperature": "May be hypothermic; fever suggests infection trigger"
+        }
+      },
+      "key_labs": {
+        "aws": {
+          "potassium_magnesium": "Often low - replace aggressively",
+          "glucose": "May be low or normal",
+          "ast_alt": "AST:ALT ratio >2:1 suggests alcoholic liver disease",
+          "blood_alcohol": "May be zero at time of withdrawal"
+        },
+        "dka": {
+          "glucose": "300-800 mg/dL (lower in euglycemic DKA)",
+          "ph": "Mild >7.25, Moderate 7.00-7.24, Severe <7.00",
+          "bicarbonate": "<18 mEq/L",
+          "anion_gap": ">12",
+          "ketones": "Elevated beta-hydroxybutyrate",
+          "potassium": "Total body depleted despite initial normal/high levels"
+        }
+      },
+      "diagnostic_criteria": {
+        "ciwa_ar": "Clinical Institute Withdrawal Assessment for Alcohol (does NOT include vital signs): <8 mild, 8-15 moderate, \u226516 severe. Invalid in delirium tremens - use CAM-ICU/RASS",
+        "dka_ada": {
+          "mild": "pH 7.25-7.30, HCO3 15-18, alert",
+          "moderate": "pH 7.00-7.24, HCO3 10-15, drowsy",
+          "severe": "pH <7.00, HCO3 <10, stupor/coma"
+        }
+      },
+      "red_flags": [
+        "Delirium tremens (3-5% of hospitalized AWS; mortality 5-15% untreated)",
+        "Refractory to benzodiazepines",
+        "Hyperthermia >40\u00b0C",
+        "DKA: pH <7.0, K+ <3.3 before insulin, cerebral edema",
+        "HHS: Osmolality >320, severe AMS"
+      ],
+      "key_differentiators": {
+        "vs_SEPSIS": "AWS has tremor, responds to BZD; sepsis has infection source, elevated procalcitonin",
+        "vs_LIVER_FAILURE": "AWS has sympathetic hyperactivity; hepatic encephalopathy has elevated ammonia, asterixis, responds to lactulose",
+        "vs_STROKE_NEURO": "AWS seizures are generalized; focal deficits suggest structural cause"
+      },
+      "sources": [
+        "ASAM Clinical Practice Guideline on Alcohol Withdrawal Management. J Addiction Med 2020",
+        "Kitabchi AE et al. Hyperglycemic Crises in Adult Patients With Diabetes. Diabetes Care 2009;32:1335-43"
+      ]
+    },
+    "CORONARY_ARTERY_DZ": {
+      "icd10_codes": [
+        "I25110",
+        "I2510",
+        "I25119",
+        "I25118",
+        "I255"
+      ],
+      "definition": "Chronic coronary artery disease with stable angina or prior MI, without acute plaque rupture. Distinguished from ACUTE_MI by absence of acute troponin rise/fall pattern.",
+      "vital_sign_patterns": {
+        "heart_rate": "May be normal or controlled with beta-blockers; tachycardia suggests decompensation",
+        "blood_pressure": "Often hypertensive; target BP control to reduce oxygen demand",
+        "characteristic": "Stable pattern without acute hemodynamic changes; exertional symptoms"
+      },
+      "key_labs": {
+        "troponin": "Normal or chronically mildly elevated (type 2 MI pattern) - NO acute rise/fall",
+        "bnp": "May be elevated if concurrent HF",
+        "lipids": "Often abnormal; target LDL <70 for secondary prevention",
+        "hba1c": "Diabetes screening/monitoring",
+        "creatinine": "Baseline renal function for medication dosing and contrast use"
+      },
+      "diagnostic_criteria": {
+        "guideline": "ACC/AHA 2023 Chronic Coronary Disease",
+        "diagnosis": "Known CAD from prior angiography, prior MI, or prior revascularization",
+        "stable_angina": "Predictable exertional symptoms relieved by rest or nitroglycerin"
+      },
+      "red_flags": [
+        "Change in anginal pattern (unstable angina \u2192 ACUTE_MI)",
+        "New troponin elevation with rise/fall (acute coronary syndrome)",
+        "New heart failure symptoms",
+        "Arrhythmias"
+      ],
+      "key_differentiators": {
+        "vs_ACUTE_MI": "CAD is chronic/stable; ACUTE_MI has acute troponin rise/fall, dynamic ECG changes, unstable symptoms",
+        "vs_HEART_FAILURE": "CAD may cause ischemic cardiomyopathy \u2192 HF; look for acute decompensation triggers"
+      },
+      "sources": [
+        "Virani SS et al. 2023 AHA/ACC Guideline for the Management of Patients With Chronic Coronary Disease. Circulation 2023",
+        "Knuuti J et al. 2019 ESC Guidelines for Chronic Coronary Syndromes. Eur Heart J 2020;41:407-477"
+      ]
+    },
+    "ACUTE_MI": {
+      "icd10_codes": [
+        "I214",
+        "I2119",
+        "I2109",
+        "I21A1",
+        "I2111"
+      ],
+      "definition": "Acute myocardial infarction from coronary plaque rupture causing acute myocardial ischemia and necrosis. STEMI (ST elevation) or NSTEMI (no ST elevation). Type 1 MI (plaque rupture) vs Type 2 MI (demand ischemia).",
+      "vital_sign_patterns": {
+        "heart_rate": "Tachycardia (pain, sympathetic activation) OR bradycardia (inferior MI, vagal)",
+        "blood_pressure": "Hypertension (pain, catecholamines) OR hypotension (cardiogenic shock, RV infarct)",
+        "respiratory_rate": "Elevated if pulmonary edema or pain",
+        "spo2": "May be reduced with pulmonary edema",
+        "characteristic_pattern": "Hemodynamic instability suggests large infarct or mechanical complication"
+      },
+      "key_labs": {
+        "troponin": "GOLD STANDARD - acute rise and/or fall pattern; high-sensitivity troponin detects smaller MIs earlier",
+        "bnp": "Elevated indicates LV dysfunction; prognostic value",
+        "creatinine": "Baseline for contrast nephropathy risk",
+        "cbc": "Anemia worsens ischemia; thrombocytopenia affects antiplatelet choice",
+        "coagulation": "Baseline before anticoagulation"
+      },
+      "diagnostic_criteria": {
+        "guideline": "Fourth Universal Definition of MI (2018) / ACC/AHA 2025",
+        "type_1_mi": "Atherosclerotic plaque disruption with thrombus",
+        "type_2_mi": "Oxygen supply/demand mismatch without plaque rupture",
+        "stemi": "ST elevation \u22651mm in 2 contiguous leads (\u22652mm in V2-V3); emergent reperfusion",
+        "nstemi": "Troponin rise/fall + ischemic symptoms/ECG changes; risk stratify for timing of angiography"
+      },
+      "red_flags": [
+        "STEMI (door-to-balloon <90 min target)",
+        "Cardiogenic shock (SBP <90, signs of hypoperfusion)",
+        "Mechanical complications (VSD, papillary muscle rupture, free wall rupture)",
+        "Sustained ventricular arrhythmias",
+        "Anterior MI with extensive ST elevation"
+      ],
+      "key_differentiators": {
+        "vs_CORONARY_ARTERY_DZ": "Acute MI has acute troponin rise/fall; CAD has stable or chronically elevated troponin",
+        "vs_PULMONARY_EMBOLISM": "Both cause chest pain, dyspnea, troponin elevation; PE has RV strain pattern, hypoxemia, D-dimer; MI has coronary distribution ECG changes",
+        "vs_HEART_FAILURE": "MI can cause acute HF; look for new regional wall motion abnormality, troponin kinetics"
+      },
+      "sources": [
+        "Thygesen K et al. Fourth Universal Definition of Myocardial Infarction. Circulation 2018;138:e618-e651",
+        "Rao SV et al. 2025 ACC/AHA Guideline for Acute Coronary Syndromes. Circulation 2025"
+      ]
+    },
+    "AFIB_ARRHYTHMIA": {
+      "icd10_codes": [
+        "I480",
+        "I4891",
+        "I472",
+        "I442",
+        "I495"
+      ],
+      "definition": "Cardiac arrhythmias requiring ICU management including atrial fibrillation with rapid ventricular response (RVR), atrial flutter, supraventricular tachycardia, ventricular tachycardia, and bradyarrhythmias.",
+      "vital_sign_patterns": {
+        "heart_rate": "Tachyarrhythmia: HR 110-180+ (AF with RVR); Bradyarrhythmia: HR <50 or pauses",
+        "blood_pressure": "May be hypotensive if hemodynamically unstable",
+        "rhythm": "AF: irregularly irregular; VT: wide complex regular; SVT: narrow complex regular",
+        "characteristic": "Palpitations, hemodynamic instability, syncope"
+      },
+      "key_labs": {
+        "potassium": "Hypokalemia predisposes to arrhythmias; keep K+ >4.0",
+        "magnesium": "Hypomagnesemia predisposes to arrhythmias; keep Mg >2.0",
+        "troponin": "May be elevated from demand ischemia during tachyarrhythmia",
+        "tsh": "Hyperthyroidism can cause AF",
+        "digoxin_level": "If on digoxin, check for toxicity"
+      },
+      "diagnostic_criteria": {
+        "guideline": "ACC/AHA/HRS 2023 AF Guideline",
+        "af_classification": {
+          "paroxysmal": "Terminates within 7 days",
+          "persistent": "Lasts >7 days",
+          "long_standing_persistent": ">12 months",
+          "permanent": "Accepted, no further rhythm control attempts"
+        },
+        "rate_control_target": "Lenient (<110 at rest) vs strict (<80) based on symptoms",
+        "stroke_risk": "CHA2DS2-VASc score for anticoagulation decision"
+      },
+      "red_flags": [
+        "Hemodynamic instability requiring cardioversion",
+        "Ventricular tachycardia (especially sustained, polymorphic)",
+        "Complete heart block with inadequate escape",
+        "Torsades de pointes",
+        "WPW with AF (wide irregular - avoid AV nodal blockers)",
+        "AF with acute stroke"
+      ],
+      "key_differentiators": {
+        "vs_SEPSIS": "Sepsis can cause tachycardia and new AF; treat underlying infection",
+        "vs_ACUTE_MI": "MI can trigger arrhythmias; arrhythmia can cause demand ischemia; check troponin trend",
+        "vs_PULMONARY_EMBOLISM": "PE can cause tachycardia, new AF, RV strain; consider if unexplained"
+      },
+      "sources": [
+        "Joglar JA et al. 2023 ACC/AHA/HRS Guideline for the Diagnosis and Management of AF. Circulation 2024;149:e1-e156",
+        "Kanji S et al. Treatment of New-Onset AF in Noncardiac ICU Patients. Crit Care Med 2008;36:1620-1624"
+      ]
+    },
+    "PNEUMONIA": {
+      "icd10_codes": [
+        "J189",
+        "J690",
+        "J159",
+        "J188",
+        "J181"
+      ],
+      "definition": "Acute infection of the lung parenchyma. Community-acquired (CAP), hospital-acquired (HAP), ventilator-associated (VAP), or aspiration pneumonia. ICU admission for severe CAP or respiratory failure.",
+      "vital_sign_patterns": {
+        "respiratory_rate": "Tachypnea (\u226530/min) - most sensitive vital sign; part of severe CAP criteria",
+        "heart_rate": "Tachycardia from fever, hypoxemia, sepsis",
+        "temperature": "Fever (>38\u00b0C) typical; elderly may be afebrile",
+        "blood_pressure": "Hypotension indicates sepsis",
+        "spo2": "Hypoxemia; PaO2/FiO2 \u2264250 is severe CAP criterion"
+      },
+      "key_labs": {
+        "wbc": "Leukocytosis or leukopenia",
+        "procalcitonin": "Elevated in bacterial pneumonia; helps distinguish from viral; guides antibiotic duration",
+        "lactate": "Elevated if sepsis",
+        "bun": "Elevated BUN is part of CURB-65",
+        "blood_cultures": "Before antibiotics; positive in ~10% CAP",
+        "sputum_culture": "If obtainable; Gram stain helpful"
+      },
+      "diagnostic_criteria": {
+        "guideline": "ATS/IDSA 2019 CAP Guidelines",
+        "severe_cap_major_criteria": [
+          "Septic shock requiring vasopressors",
+          "Respiratory failure requiring mechanical ventilation"
+        ],
+        "severe_cap_minor_criteria": [
+          "RR \u226530",
+          "PaO2/FiO2 \u2264250",
+          "Multilobar infiltrates",
+          "Confusion",
+          "BUN \u226520",
+          "WBC <4k",
+          "Platelets <100k",
+          "Temp <36\u00b0C",
+          "Hypotension requiring fluids"
+        ],
+        "severe_cap_definition": "1 major OR \u22653 minor criteria \u2192 ICU admission",
+        "curb65": "Confusion, Urea >7mmol/L (BUN>19), RR\u226530, BP<90/60, Age\u226565. Score 3-5 = severe."
+      },
+      "red_flags": [
+        "Septic shock",
+        "Respiratory failure requiring intubation",
+        "Multilobar involvement",
+        "Rapid radiographic progression",
+        "Parapneumonic effusion/empyema",
+        "Cavitation (suggests necrotizing or abscess)"
+      ],
+      "key_differentiators": {
+        "vs_HEART_FAILURE": "Both cause dyspnea, hypoxia; pneumonia has fever, focal consolidation, elevated procalcitonin; HF has elevated BNP, bilateral edema, response to diuretics",
+        "vs_COPD_ASTHMA": "Pneumonia can trigger COPD exacerbation; look for focal infiltrate, fever, purulent sputum",
+        "vs_COVID": "Similar presentation; test for SARS-CoV-2; COVID has bilateral GGO, lymphopenia, distinct clinical course"
+      },
+      "sources": [
+        "Metlay JP et al. Diagnosis and Treatment of Adults with CAP: ATS/IDSA 2019. Am J Respir Crit Care Med 2019;200:e45-e67",
+        "Lim WS et al. Defining CAP severity on presentation: CURB-65. Thorax 2003;58:377-382"
+      ]
+    },
+    "ACUTE_KIDNEY_INJURY": {
+      "icd10_codes": [
+        "N179",
+        "N170",
+        "N178",
+        "N172"
+      ],
+      "definition": "Acute decline in kidney function. Prerenal (hypoperfusion), intrinsic (ATN, AIN, GN), or postrenal (obstruction). KDIGO staging by creatinine rise or urine output decline.",
+      "vital_sign_patterns": {
+        "urine_output": "DEFINING parameter - oliguria <0.5 mL/kg/hr for \u22656 hours",
+        "blood_pressure": "Hypotension suggests prerenal etiology",
+        "respiratory_rate": "Tachypnea if uremic acidosis or volume overload",
+        "heart_rate": "Tachycardia from hypovolemia; bradycardia if severe hyperkalemia"
+      },
+      "key_labs": {
+        "creatinine": "Rising trend is diagnostic; rate of rise important",
+        "bun_cr_ratio": ">20:1 suggests prerenal; <10:1 suggests intrinsic",
+        "potassium": "Hyperkalemia - life-threatening; check ECG for peaked T waves, QRS widening",
+        "bicarbonate": "Low from uremic acidosis",
+        "urinalysis": "Muddy brown casts = ATN; WBC casts = AIN; RBC casts = GN; bland = prerenal",
+        "fena": "<1% prerenal; >2% ATN (unreliable if diuretics given)"
+      },
+      "diagnostic_criteria": {
+        "guideline": "KDIGO 2012",
+        "stage_1": "Cr 1.5-1.9x baseline OR +0.3 mg/dL; UO <0.5 mL/kg/hr for 6-12h",
+        "stage_2": "Cr 2.0-2.9x baseline; UO <0.5 mL/kg/hr for \u226512h",
+        "stage_3": "Cr \u22653.0x baseline OR \u22654.0 mg/dL OR RRT initiation; UO <0.3 mL/kg/hr for \u226524h OR anuria \u226512h",
+        "rrt_indications": "Refractory K+ >6.5, pH <7.1, volume overload, uremic complications, dialyzable toxins"
+      },
+      "red_flags": [
+        "Anuria",
+        "Hyperkalemia >6.5 with ECG changes",
+        "Severe acidosis pH <7.1",
+        "Pulmonary edema refractory to diuretics",
+        "Uremic encephalopathy or pericarditis",
+        "Creatinine rising >0.5 mg/dL/day"
+      ],
+      "key_differentiators": {
+        "vs_SEPSIS": "AKI is SOFA renal component in sepsis; sepsis-associated AKI common",
+        "vs_HEART_FAILURE": "Cardiorenal syndrome - HF causes AKI; requires careful volume management",
+        "vs_LIVER_FAILURE": "Hepatorenal syndrome - functional AKI in cirrhosis; requires albumin + vasoconstrictors"
+      },
+      "sources": [
+        "KDIGO Clinical Practice Guideline for AKI. Kidney Int Suppl 2012;2:1-138",
+        "Mortality HR 2.2/6.1/8.6 for KDIGO Stages 1/2/3 respectively"
+      ]
+    },
+    "STROKE_NEURO": {
+      "icd10_codes": [
+        "I671",
+        "I639",
+        "I63412",
+        "I63411",
+        "I618"
+      ],
+      "definition": "Acute cerebrovascular event. Ischemic stroke (87%): arterial occlusion. Hemorrhagic stroke (13%): ICH or SAH. ICU for large territory, hemorrhagic conversion, elevated ICP, or intervention.",
+      "vital_sign_patterns": {
+        "blood_pressure": "ELEVATED - permissive hypertension (impaired autoregulation); target <220/120 if no reperfusion; <180/105 post-tPA/thrombectomy",
+        "heart_rate": "May show AF (embolic source); Cushing reflex (bradycardia + HTN) with herniation",
+        "respiratory": "Irregular patterns (Cheyne-Stokes, ataxic) with brainstem involvement",
+        "pupils": "Asymmetry or unreactive = herniation emergency"
+      },
+      "key_labs": {
+        "glucose": "MUST check before tPA - hypoglycemia mimics stroke; hyperglycemia worsens outcomes",
+        "coagulation": "INR >1.7 relative contraindication to tPA",
+        "troponin": "May be elevated (neurogenic cardiac injury)",
+        "platelets": "<100k contraindication to tPA"
+      },
+      "diagnostic_criteria": {
+        "guideline": "AHA/ASA 2026",
+        "nihss": "0 no symptoms; 1-4 minor; 5-15 moderate; 16-20 moderate-severe; 21-42 severe",
+        "tpa_window": "Within 4.5 hours; extended to 9 hours with favorable imaging",
+        "thrombectomy_window": "Up to 24 hours for LVO with favorable imaging; strongly recommended for basilar with NIHSS \u226510",
+        "bp_post_reperfusion": "Target <180/105 for 24 hours; intensive <140 NOT recommended"
+      },
+      "red_flags": [
+        "Large vessel occlusion (thrombectomy candidate)",
+        "Declining consciousness (edema, hemorrhagic conversion, herniation)",
+        "Malignant MCA syndrome (decompressive craniectomy may be needed)",
+        "Cushing triad (herniation)",
+        "New pupil asymmetry",
+        "NIHSS \u226520"
+      ],
+      "key_differentiators": {
+        "vs_SYNCOPE": "Stroke has persistent focal deficits; syncope has complete recovery; always do neuro exam",
+        "vs_TOXIC_METABOLIC": "Hypoglycemia mimics stroke - ALWAYS check glucose; metabolic causes typically symmetric",
+        "vs_TRAUMA_NEURO": "Traumatic vs spontaneous hemorrhage - mechanism critical"
+      },
+      "sources": [
+        "Prabhakaran S et al. 2026 AHA/ASA Guideline for Early Management of AIS. Stroke 2026",
+        "NIH Stroke Scale - standardized assessment"
+      ]
+    },
+    "UTI_INFECTION": {
+      "icd10_codes": [
+        "N390",
+        "N12",
+        "N10"
+      ],
+      "definition": "Urinary tract infection ranging from cystitis to pyelonephritis to urosepsis. ICU admission for urosepsis or complicated UTI with hemodynamic instability.",
+      "vital_sign_patterns": {
+        "temperature": "Fever common with pyelonephritis/urosepsis; may be absent in elderly",
+        "heart_rate": "Tachycardia if sepsis",
+        "blood_pressure": "Hypotension indicates urosepsis",
+        "characteristic": "Urosepsis = UTI meeting sepsis criteria"
+      },
+      "key_labs": {
+        "urinalysis": "Pyuria (>10 WBC/hpf), bacteriuria, positive nitrites/leukocyte esterase",
+        "urine_culture": "Gold standard; obtain before antibiotics",
+        "blood_cultures": "Positive in 20-30% of pyelonephritis",
+        "lactate": "Elevated if urosepsis",
+        "creatinine": "May be elevated from obstruction or sepsis-associated AKI"
+      },
+      "diagnostic_criteria": {
+        "guideline": "IDSA 2025 Complicated UTI Guidelines",
+        "complicated_uti": "UTI in presence of structural/functional abnormality, catheter, obstruction, male sex, pregnancy, or immunocompromise",
+        "urosepsis": "UTI + sepsis criteria (SOFA \u22652)"
+      },
+      "red_flags": [
+        "Urosepsis with hemodynamic instability",
+        "Obstructive pyelonephritis (requires urgent decompression)",
+        "Emphysematous pyelonephritis (gas-forming, emergent)",
+        "Perinephric abscess",
+        "Failure to improve on appropriate antibiotics"
+      ],
+      "key_differentiators": {
+        "vs_SEPSIS": "Urosepsis is sepsis from urinary source; identify and treat obstruction",
+        "vs_ACUTE_KIDNEY_INJURY": "UTI can cause AKI; obstructive uropathy needs decompression"
+      },
+      "sources": [
+        "IDSA 2025 Guidelines on Complicated UTI",
+        "EAU Guidelines on Urological Infections 2024"
+      ]
+    },
+    "LIVER_FAILURE": {
+      "icd10_codes": [
+        "K7031",
+        "K7290",
+        "K7469",
+        "K7200",
+        "K7040"
+      ],
+      "definition": "Acute liver failure (ALF): INR \u22651.5 + encephalopathy, no prior liver disease, <26 weeks. Acute-on-chronic liver failure (ACLF): decompensation of cirrhosis. Causes include acetaminophen, viral hepatitis, autoimmune, drug-induced.",
+      "vital_sign_patterns": {
+        "blood_pressure": "Hypotension from vasodilatory shock",
+        "heart_rate": "Tachycardia",
+        "respiratory": "Tachypnea/hyperventilation early; intubation for grade 3-4 HE",
+        "mental_status": "Altered - DEFINING for ALF; West Haven grading"
+      },
+      "key_labs": {
+        "inr": "\u22651.5 required for ALF diagnosis; does NOT correlate with bleeding risk in liver disease",
+        "ast_alt": ">3000 in hyperacute (acetaminophen, ischemic)",
+        "ammonia": ">200 \u03bcg/dL = cerebral herniation risk",
+        "glucose": "Hypoglycemia common (impaired gluconeogenesis); requires continuous monitoring",
+        "lactate": "Elevated; pH <7.3 in acetaminophen = 95% mortality without transplant",
+        "phosphate": "Paradoxically LOW in acetaminophen (indicates regeneration - good sign)"
+      },
+      "diagnostic_criteria": {
+        "guideline": "AASLD 2011 / ACG 2023",
+        "west_haven_he": {
+          "grade_1": "Mild confusion, shortened attention",
+          "grade_2": "Lethargy, disorientation (ICU admission)",
+          "grade_3": "Somnolent but arousable (intubate)",
+          "grade_4": "Coma (intubate)"
+        },
+        "kings_college_criteria": {
+          "acetaminophen": "pH <7.3 OR all 3: INR >6.5, Cr >3.4, grade 3-4 HE",
+          "non_acetaminophen": "INR >6.5 OR any 3 of 5: unfavorable etiology, age <10 or >40, jaundice >7 days before HE, INR >3.5, bilirubin >17.5"
+        }
+      },
+      "red_flags": [
+        "Grade 3-4 hepatic encephalopathy",
+        "Ammonia >150-200 (cerebral edema risk)",
+        "INR >6.5",
+        "Hypoglycemia",
+        "pH <7.3",
+        "Multi-organ failure",
+        "Meeting King's College Criteria (list for transplant)"
+      ],
+      "key_differentiators": {
+        "vs_TOXIC_METABOLIC": "HE has elevated ammonia, asterixis, responds to lactulose; AWS has tremor, sympathetic hyperactivity, responds to BZD",
+        "vs_SEPSIS": "Both cause vasodilatory shock; ALF patients at high infection risk",
+        "vs_ACUTE_KIDNEY_INJURY": "Hepatorenal syndrome = functional AKI; requires albumin + terlipressin"
+      },
+      "sources": [
+        "Lee WM et al. AASLD Position Paper: Acute Liver Failure. Hepatology 2011",
+        "Flamm SL et al. ACG Clinical Guideline: Diagnosis and Management of ALF. Am J Gastroenterol 2023"
+      ]
+    },
+    "SURGICAL_COMPLICATION": {
+      "icd10_codes": [
+        "T814XXA",
+        "T82868A",
+        "T827XXA",
+        "T8141XA",
+        "T8143XA"
+      ],
+      "definition": "Complications from surgical procedures requiring ICU: surgical site infection (SSI), anastomotic leak, postoperative bleeding, respiratory failure, sepsis, device complications.",
+      "vital_sign_patterns": {
+        "baseline_context": "Abnormal vitals COMMON postop - tachycardia/tachypnea in >50% of uncomplicated recoveries",
+        "warning_signs": [
+          "Persistent/worsening tachycardia beyond expected course",
+          "New fever after POD 3-4",
+          "Hypotension requiring fluids/vasopressors",
+          "Increasing O2 requirements",
+          "Failure to progress along expected trajectory"
+        ],
+        "anastomotic_leak": "Typically POD 3-7; early: persistent tachycardia, low-grade fever; late: peritonitis, septic shock",
+        "ppv_note": "Single abnormal vital sign has PPV only 4-11% for complications"
+      },
+      "key_labs": {
+        "wbc": "Leukocytosis expected postop; persistent elevation or rising trend concerning",
+        "crp": "Normally peaks POD 2-3 then declines; failure to decline suggests infection/leak",
+        "procalcitonin": "Rising trend suggests bacterial infection",
+        "lactate": "Elevated suggests sepsis/hypoperfusion",
+        "hemoglobin": "Falling suggests bleeding"
+      },
+      "diagnostic_criteria": {
+        "ssi_cdc": {
+          "superficial": "Skin/subcutaneous, within 30 days",
+          "deep": "Fascia/muscle, within 30-90 days if implant",
+          "organ_space": "Body part opened/manipulated during surgery (includes anastomotic leak)"
+        },
+        "anastomotic_leak_grading": {
+          "grade_a": "Radiologic leak, no symptoms, no management change",
+          "grade_b": "Requires intervention (antibiotics, drainage) but no re-operation",
+          "grade_c": "Requires re-laparotomy"
+        },
+        "postop_sepsis": "Sepsis-3 criteria in postoperative context; consider failure of source control"
+      },
+      "red_flags": [
+        "Septic shock",
+        "Peritonitis",
+        "Cardiopulmonary collapse of unclear etiology (suspect anastomotic leak)",
+        "Failure to improve despite antibiotics (failure of source control)",
+        "Hemorrhagic shock"
+      ],
+      "key_differentiators": {
+        "vs_SEPSIS": "Same criteria, but surgical source requires source control consideration",
+        "vs_PNEUMONIA": "Postop pneumonia common; distinguish from intra-abdominal source",
+        "vs_PULMONARY_EMBOLISM": "PE risk high postop; unexplained hypoxemia/tachycardia \u2192 consider CTPA"
+      },
+      "sources": [
+        "Barie PS et al. Sepsis and Postoperative SSI. Surgical Clinics 2023",
+        "Erb L et al. Abnormal Vital Signs After Bowel Resection. J Am Coll Surg 2014"
+      ]
+    },
+    "TRAUMA_NEURO": {
+      "icd10_codes": [
+        "S065X0A",
+        "S065X9A",
+        "S066X0A",
+        "S066X9A",
+        "S022XXA"
+      ],
+      "definition": "Traumatic brain injury (TBI) from external mechanical force. Mild (GCS 13-15), Moderate (GCS 9-12), Severe (GCS 3-8). ICU for moderate-severe TBI, ICP monitoring, neurosurgical intervention.",
+      "vital_sign_patterns": {
+        "blood_pressure": "Hypotension (SBP <90) DOUBLES MORTALITY - maintain SBP \u2265100 (age 50-69) or \u2265110 (age 15-49)",
+        "heart_rate": "Tachycardia common; bradycardia with HTN = Cushing reflex (herniation)",
+        "respiratory": "Irregular patterns suggest brainstem injury; intubate for GCS \u22648",
+        "temperature": "Hyperthermia worsens outcomes; target 36-38\u00b0C",
+        "icp": "Normal <20 mmHg; treat >22 mmHg per BTF",
+        "cpp": "Target 60-70 mmHg; avoid >70 (ARDS risk)"
+      },
+      "key_labs": {
+        "coagulation": "TBI causes coagulopathy (tissue factor release); correct urgently",
+        "glucose": "Avoid hypoglycemia; hyperglycemia associated with worse outcomes",
+        "sodium": "Target normal; monitor if using hypertonic saline",
+        "osmolality": "Monitor if using mannitol (limit 320) or hypertonic saline"
+      },
+      "diagnostic_criteria": {
+        "gcs": {
+          "eye": "Spontaneous (4), To voice (3), To pain (2), None (1)",
+          "verbal": "Oriented (5), Confused (4), Inappropriate (3), Incomprehensible (2), None (1)",
+          "motor": "Obeys (6), Localizes (5), Withdraws (4), Flexion (3), Extension (2), None (1)",
+          "severe": "3-8",
+          "moderate": "9-12",
+          "mild": "13-15"
+        },
+        "btf_icp_monitoring": "GCS \u22648 with abnormal CT; or normal CT with \u22652 of: age >40, motor posturing, SBP <90",
+        "icp_treatment_threshold": ">22 mmHg (updated from >20)"
+      },
+      "red_flags": [
+        "GCS \u22648",
+        "Pupil asymmetry or unreactive",
+        "Cushing triad",
+        "Declining GCS (>2 point drop)",
+        "Motor posturing",
+        "ICP >22 refractory to Tier 1",
+        "Midline shift >5mm",
+        "Hypotension (SBP <90)"
+      ],
+      "key_differentiators": {
+        "vs_STROKE_NEURO": "Mechanism distinguishes traumatic vs spontaneous; trauma may cause stroke (dissection)",
+        "vs_TOXIC_METABOLIC": "Alcohol intoxication complicates GCS; low threshold for imaging",
+        "vs_SYNCOPE": "Syncope causes fall \u2192 secondary TBI; evaluate both"
+      },
+      "sources": [
+        "Carney N et al. BTF Guidelines for Severe TBI, 4th Edition. Neurosurgery 2017;80:6-15",
+        "Hawryluk GWJ et al. SIBICC ICP Management Algorithm. Intensive Care Med 2019"
+      ]
+    },
+    "GI_BLEED": {
+      "icd10_codes": [
+        "K921",
+        "K922",
+        "K254",
+        "K264",
+        "K920"
+      ],
+      "definition": "Upper GI bleed (UGIB): proximal to ligament of Treitz (esophagus, stomach, duodenum). Lower GI bleed (LGIB): distal. Causes: peptic ulcer, varices, Mallory-Weiss, diverticulosis, angiodysplasia.",
+      "vital_sign_patterns": {
+        "heart_rate": "Tachycardia early sign; may be absent with beta-blockers",
+        "blood_pressure": "Orthostatic hypotension early; supine hypotension with >30-40% blood loss",
+        "shock_index": "HR/SBP >1.0 suggests significant hemorrhage",
+        "hemorrhage_classes": {
+          "class_1": "<15% loss: normal vitals",
+          "class_2": "15-30%: tachy >100, normal BP",
+          "class_3": "30-40%: tachy >120, hypotension",
+          "class_4": ">40%: tachy >140, severe hypotension"
+        }
+      },
+      "key_labs": {
+        "hemoglobin": "May be normal initially (hemodilution takes hours); trend is key",
+        "bun_cr_ratio": ">20:1 suggests UGIB (blood protein absorbed)",
+        "coagulation": "INR, PTT; correct if >2.5 with active bleeding",
+        "platelets": "Transfuse if <50k with active bleeding",
+        "lactate": "Elevated indicates hypoperfusion"
+      },
+      "diagnostic_criteria": {
+        "glasgow_blatchford_score": {
+          "components": "BUN, Hgb, SBP, HR, melena, syncope, hepatic disease, heart failure",
+          "range": "0-23",
+          "interpretation": "Score 0-1: low risk, candidate for outpatient management (100% NPV)"
+        },
+        "rockall_score": {
+          "pre_endoscopy": "Age, shock, comorbidities (0-7)",
+          "complete": "Adds endoscopic findings (0-11)",
+          "interpretation": "\u22642: low risk (4.3% rebleed, 0.1% death); \u22656: high risk (15% rebleed, 39% death)"
+        },
+        "aims65": "Albumin <3, INR >1.5, Mental status change, SBP \u226490, Age \u226565"
+      },
+      "red_flags": [
+        "Hemodynamic instability",
+        "Active hematemesis or bright red blood per NGT",
+        "Massive transfusion requirement",
+        "Variceal bleeding",
+        "Coagulopathy with active bleeding",
+        "Failed endoscopic hemostasis",
+        "GBS >10 or Rockall \u22656"
+      ],
+      "key_differentiators": {
+        "vs_LIVER_FAILURE": "Variceal bleeding in cirrhosis; coagulopathy; specific treatment (octreotide, TIPS)",
+        "vs_SYNCOPE": "GI bleed can present with syncope; check hemoglobin",
+        "vs_SURGICAL_COMPLICATION": "Postop bleeding from anastomosis; may need return to OR"
+      },
+      "sources": [
+        "Blatchford O et al. GBS validation. Lancet 2000;356:1318-21",
+        "Villanueva C et al. Restrictive transfusion strategy in UGIB. NEJM 2013"
+      ]
+    },
+    "SKIN_SOFT_TISSUE": {
+      "icd10_codes": [
+        "L03116",
+        "L03115",
+        "L03113",
+        "L03114",
+        "L03211"
+      ],
+      "definition": "Skin and soft tissue infections ranging from cellulitis to necrotizing fasciitis. ICU admission for necrotizing infection, sepsis, or extensive involvement requiring surgical debridement.",
+      "vital_sign_patterns": {
+        "temperature": "Fever common; may be absent in immunocompromised",
+        "heart_rate": "Tachycardia, especially with sepsis or necrotizing infection",
+        "blood_pressure": "Hypotension indicates septic shock",
+        "characteristic": "Pain out of proportion to exam = red flag for necrotizing fasciitis"
+      },
+      "key_labs": {
+        "wbc": "Leukocytosis; WBC >15.4k part of LRINEC score",
+        "creatinine": "Elevated (Cr >1.6) part of LRINEC",
+        "glucose": "Elevated (>180) part of LRINEC",
+        "sodium": "Low (<135) part of LRINEC",
+        "hemoglobin": "Low (<13.5) part of LRINEC",
+        "crp": "Elevated (\u2265150) part of LRINEC",
+        "lactate": "Elevated with sepsis",
+        "ck": "Elevated suggests deep tissue involvement"
+      },
+      "diagnostic_criteria": {
+        "lrinec_score": {
+          "components": "CRP, WBC, Hgb, Na, Creatinine, Glucose",
+          "interpretation": "\u22658 = high risk for necrotizing fasciitis; BUT low sensitivity (~60%)",
+          "note": "Clinical diagnosis is paramount - do NOT rely solely on LRINEC"
+        },
+        "necrotizing_fasciitis_clues": [
+          "Pain out of proportion to exam",
+          "Rapid progression",
+          "Skin changes (bullae, crepitus, ecchymosis)",
+          "Systemic toxicity disproportionate to local findings",
+          "Failure to respond to antibiotics"
+        ]
+      },
+      "red_flags": [
+        "Pain out of proportion to exam (necrotizing fasciitis)",
+        "Crepitus or gas on imaging",
+        "Bullae or skin necrosis",
+        "Rapid spread despite antibiotics",
+        "Septic shock",
+        "Need for surgical debridement"
+      ],
+      "key_differentiators": {
+        "vs_SEPSIS": "SSTI can be source of sepsis; identify and control source",
+        "vs_SURGICAL_COMPLICATION": "Postop wound infection; may need operative debridement"
+      },
+      "sources": [
+        "Stevens DL et al. IDSA Guidelines for SSTI. Clin Infect Dis 2014;59:e10-52",
+        "Wong CH et al. LRINEC Score. Crit Care Med 2004;32:1535-41"
+      ]
+    },
+    "VALVE_DISEASE": {
+      "icd10_codes": [
+        "I350",
+        "I340",
+        "I352"
+      ],
+      "definition": "Significant valvular heart disease requiring ICU care. Includes severe aortic stenosis (AS), aortic regurgitation (AR), mitral stenosis (MS), mitral regurgitation (MR). ICU for decompensation, cardiogenic shock, or peri-procedural.",
+      "vital_sign_patterns": {
+        "blood_pressure": "AS: narrow pulse pressure, pulsus parvus et tardus. AR: wide pulse pressure, low diastolic. MR: may be hypotensive in acute severe MR",
+        "heart_rate": "Tachycardia with decompensation; AF common with mitral disease",
+        "respiratory": "Tachypnea with pulmonary edema",
+        "characteristic": "Murmur characteristics help identify valve lesion"
+      },
+      "key_labs": {
+        "bnp": "Elevated with decompensation; prognostic",
+        "troponin": "May be elevated from demand ischemia"
+      },
+      "diagnostic_criteria": {
+        "guideline": "ACC/AHA 2020 / ESC 2021",
+        "severe_as": "AVA <1.0 cm\u00b2, mean gradient >40 mmHg, peak velocity >4 m/s",
+        "severe_mr": "Regurgitant volume >60 mL, EROA >0.4 cm\u00b2",
+        "severe_ar": "Regurgitant volume >60 mL, EROA >0.3 cm\u00b2"
+      },
+      "red_flags": [
+        "Cardiogenic shock",
+        "Severe AS with hypotension (careful with vasodilators)",
+        "Acute severe MR or AR (flash pulmonary edema)",
+        "Endocarditis with valve destruction",
+        "Syncope with severe AS"
+      ],
+      "key_differentiators": {
+        "vs_HEART_FAILURE": "Valve disease can cause HF; identify and address valve lesion",
+        "vs_ACUTE_MI": "Ischemic MR from papillary muscle dysfunction; mechanical complication of MI"
+      },
+      "sources": [
+        "Otto CM et al. 2020 ACC/AHA Guideline for Valvular Heart Disease. Circulation 2021;143:e72-e227",
+        "Vahanian A et al. 2021 ESC Guidelines on Valvular Heart Disease. Eur Heart J 2022;43:561-632"
+      ]
+    },
+    "COPD_ASTHMA": {
+      "icd10_codes": [
+        "J441",
+        "J45901",
+        "J440"
+      ],
+      "definition": "COPD exacerbation (AECOPD): acute worsening of respiratory symptoms requiring treatment change. Severe asthma exacerbation: acute/subacute worsening requiring hospitalization. ICU for respiratory failure or impending failure.",
+      "vital_sign_patterns": {
+        "respiratory_rate": "Tachypnea (>20-30) - hallmark; correlates with severity",
+        "heart_rate": "Tachycardia from hypoxemia, beta-agonists, work of breathing",
+        "spo2": "Hypoxemia; TARGET 88-92% in COPD (avoid O2-induced hypercapnia)",
+        "accessory_muscles": "Visible use indicates moderate-severe exacerbation",
+        "severe_indicators": "RR >30, HR >120, SpO2 <90%, accessory muscle use, altered mental status, unable to complete sentences"
+      },
+      "key_labs": {
+        "abg_vbg": "CRITICAL - pH <7.35 with PaCO2 >45 = respiratory acidosis requiring NIV",
+        "crp": "\u226510 mg/L suggests moderate-severe; helps guide antibiotics",
+        "procalcitonin": "Low = viral; elevated = bacterial",
+        "bnp": "Helps distinguish from heart failure"
+      },
+      "diagnostic_criteria": {
+        "guideline": "GOLD 2023-2026",
+        "severity_classification": {
+          "mild": "Dyspnea VAS 5-6, RR <24, HR <95, SpO2 \u226592%, CRP <10",
+          "moderate": "Dyspnea VAS 6-7, RR 24-30, HR 95-110, SpO2 90-92%, CRP \u226510",
+          "severe": "Dyspnea VAS \u22657, RR >30, HR >110, SpO2 <90%, accessory muscles, AND/OR pH <7.35 with PaCO2 >45"
+        },
+        "niv_indications": "pH <7.35 and PaCO2 >45; severe dyspnea with accessory muscles; persistent hypoxemia",
+        "intubation_indications": "NIV failure, respiratory arrest, inability to protect airway, hemodynamic instability"
+      },
+      "red_flags": [
+        "Respiratory acidosis despite NIV",
+        "Altered mental status (CO2 narcosis)",
+        "Severe distress with paradoxical breathing",
+        "Silent chest in asthma (critical airflow limitation)",
+        "Hemodynamic instability",
+        "Pneumothorax"
+      ],
+      "key_differentiators": {
+        "vs_HEART_FAILURE": "Both cause dyspnea, wheezing; HF has elevated BNP, responds to diuretics; COPD responds to bronchodilators",
+        "vs_PNEUMONIA": "Pneumonia can trigger AECOPD; fever, focal consolidation, elevated procalcitonin",
+        "vs_PULMONARY_EMBOLISM": "Unexplained hypoxia out of proportion \u2192 consider PE"
+      },
+      "sources": [
+        "GOLD 2023-2026 Reports. www.goldcopd.org",
+        "Osadnik CR et al. Cochrane Review: NIV in AECOPD"
+      ]
+    },
+    "PANCREATITIS": {
+      "icd10_codes": [
+        "K3580",
+        "K8590",
+        "K8510"
+      ],
+      "definition": "Acute pancreatitis from premature enzyme activation causing autodigestion. Causes: gallstones (40%), alcohol (40%), hypertriglyceridemia. Severe cases \u2192 SIRS, organ failure, necrotizing pancreatitis.",
+      "vital_sign_patterns": {
+        "heart_rate": "Tachycardia from pain, hypovolemia, SIRS",
+        "blood_pressure": "Hypotension if severe third-spacing",
+        "respiratory_rate": "Tachypnea from SIRS or ARDS/effusions",
+        "temperature": "Fever indicates SIRS; persistent fever after day 7-10 suggests infected necrosis",
+        "spo2": "May drop with ARDS or pleural effusions"
+      },
+      "key_labs": {
+        "lipase": "\u22653x ULN (more specific than amylase)",
+        "hematocrit": ">44% indicates hemoconcentration",
+        "bun": "Rising BUN indicates inadequate resuscitation",
+        "calcium": "Hypocalcemia (saponification)",
+        "glucose": "Elevated",
+        "triglycerides": "Check if >1000 (potential cause)"
+      },
+      "diagnostic_criteria": {
+        "guideline": "Revised Atlanta 2012 / ACG 2013",
+        "severity": {
+          "mild": "No organ failure, no local complications",
+          "moderately_severe": "Transient organ failure (<48h) OR local complications",
+          "severe": "Persistent organ failure (>48h)"
+        },
+        "bisap": "BUN >25, Impaired mental status, SIRS, Age >60, Pleural effusion. \u22653 = higher mortality (AUC 0.92)",
+        "marshall_score": "\u22652 points = organ failure: PaO2/FiO2 <300, Cr >1.9, SBP <90"
+      },
+      "red_flags": [
+        "Persistent organ failure",
+        "Infected necrosis (fever + deterioration after day 7-10; gas on CT)",
+        "Abdominal compartment syndrome",
+        "Hemorrhage from pseudoaneurysm erosion"
+      ],
+      "key_differentiators": {
+        "vs_ACUTE_MI": "Both cause epigastric pain; pancreatitis has lipase \u22653x, no ST changes",
+        "vs_SEPSIS": "Severe pancreatitis mimics sepsis; infected necrosis = true sepsis",
+        "vs_SURGICAL_COMPLICATION": "Post-op pancreatitis common after abdominal/cardiac surgery"
+      },
+      "sources": [
+        "Banks PA et al. Classification of Acute Pancreatitis (Atlanta 2012). Gut 2013;62:102-111",
+        "Tenner S et al. ACG Guidelines: Management of Acute Pancreatitis. Am J Gastroenterol 2013;108:1400-15"
+      ]
+    },
+    "COVID": {
+      "icd10_codes": [
+        "U071"
+      ],
+      "definition": "COVID-19 (SARS-CoV-2 infection) causing respiratory failure. Characterized by bilateral pneumonia, ARDS, hypercoagulability, and cytokine storm. Biphasic course: viral phase (days 1-7) then inflammatory phase (days 7-14).",
+      "vital_sign_patterns": {
+        "spo2": "Silent (happy) hypoxemia - severe hypoxemia with minimal dyspnea initially",
+        "respiratory_rate": "May be deceptively normal early despite low SpO2; then rapid deterioration",
+        "temperature": "Fever common",
+        "heart_rate": "Tachycardia"
+      },
+      "key_labs": {
+        "d_dimer": ">1000 ng/mL associated with higher mortality",
+        "lymphocytes": "Lymphopenia (<1000) common; worse prognosis",
+        "ferritin": ">500 indicates inflammation; very high suggests cytokine storm",
+        "crp": "Elevated; tracks disease activity",
+        "il6": "Elevated in severe disease",
+        "ldh": "Elevated indicates tissue damage"
+      },
+      "diagnostic_criteria": {
+        "diagnosis": "PCR or antigen positive for SARS-CoV-2",
+        "severity": {
+          "mild": "Symptoms without pneumonia",
+          "moderate": "Pneumonia without hypoxemia",
+          "severe": "Pneumonia with SpO2 <94% or RR >30",
+          "critical": "ARDS, septic shock, or multi-organ failure"
+        }
+      },
+      "red_flags": [
+        "Rapid desaturation despite high-flow O2",
+        "D-dimer >1000 (VTE risk)",
+        "Lymphopenia <500",
+        "Ferritin >1000 (cytokine storm)",
+        "Secondary bacterial infection",
+        "Myocarditis"
+      ],
+      "key_differentiators": {
+        "vs_PNEUMONIA": "Similar presentation; COVID has bilateral GGO, lymphopenia, silent hypoxemia, biphasic course",
+        "vs_SEPSIS": "COVID can cause sepsis picture; distinguish viral vs bacterial",
+        "vs_PULMONARY_EMBOLISM": "High VTE risk in COVID; consider if unexplained deterioration"
+      },
+      "sources": [
+        "NIH COVID-19 Treatment Guidelines",
+        "Ruan Q et al. Clinical Predictors of Mortality in COVID-19. Intensive Care Med 2020"
+      ]
+    },
+    "SYNCOPE": {
+      "icd10_codes": [
+        "R55"
+      ],
+      "definition": "Transient loss of consciousness from cerebral hypoperfusion with rapid onset, short duration, and spontaneous complete recovery. ICU for high-risk syncope with suspected cardiac etiology or hemodynamic instability.",
+      "vital_sign_patterns": {
+        "blood_pressure": "Hypotension at presentation suggests volume depletion or cardiogenic; orthostatic drop indicates orthostatic etiology",
+        "heart_rate": "Bradycardia or tachycardia highly significant; irregular rhythm suggests AF",
+        "note": "Vitals often normalized by ICU admission; telemetry captures transient arrhythmias"
+      },
+      "key_labs": {
+        "troponin": "Elevated suggests ACS; part of Canadian Syncope Risk Score",
+        "hemoglobin": "Anemia (Hct <30%) is risk factor; GI bleed can cause syncope",
+        "bnp": "Elevated suggests HF or structural heart disease",
+        "glucose": "Hypoglycemia can mimic syncope"
+      },
+      "diagnostic_criteria": {
+        "san_francisco_syncope_rule": {
+          "criteria": "CHESS: CHF history, Hct <30%, abnormal ECG, Shortness of breath, SBP <90",
+          "interpretation": "ANY positive = high risk",
+          "performance": "Sensitivity 86-87%, Specificity 49-52%"
+        },
+        "canadian_syncope_risk_score": {
+          "components": "Vasovagal predisposition (-1), Heart disease (+1), SBP <90 or >180 (+2), Elevated troponin (+2), Abnormal QRS axis (+1), QTc >480ms (+2), QRS >130ms (+1), ED diagnosis vasovagal (-2), ED diagnosis cardiac (+2)",
+          "interpretation": "\u2264-1 very low risk (<1%); 0-1 low (<1%); 2-3 medium (5%); 4-5 high (12%); \u22656 very high (>50%)",
+          "performance": "AUC 0.91 for 30-day serious outcomes"
+        }
+      },
+      "red_flags": [
+        "Syncope during exertion",
+        "Syncope while supine (rules out vasovagal - implies cardiac)",
+        "Palpitations before syncope",
+        "Family history of sudden death",
+        "Known structural heart disease",
+        "ECG abnormalities (long QT, Brugada, WPW, AV block)"
+      ],
+      "key_differentiators": {
+        "vs_STROKE_NEURO": "Stroke has persistent focal deficits; syncope has complete recovery",
+        "vs_AFIB_ARRHYTHMIA": "AF is common cause; VT is high-risk cause; telemetry essential",
+        "vs_PULMONARY_EMBOLISM": "PE presents with syncope in ~10%; consider if hypoxic",
+        "vs_GI_BLEED": "GI bleed can present with syncope; check hemoglobin"
+      },
+      "sources": [
+        "Quinn JV et al. San Francisco Syncope Rule. Ann Emerg Med 2004",
+        "Thiruganasambandamoorthy V et al. Canadian Syncope Risk Score. CMAJ 2016; JAMA Intern Med 2020"
+      ]
+    },
+    "PULMONARY_EMBOLISM": {
+      "icd10_codes": [
+        "I2699",
+        "I2694",
+        "I2692"
+      ],
+      "definition": "Obstruction of pulmonary arteries by thrombus causing V/Q mismatch, hypoxemia, and RV strain. Massive PE causes hemodynamic collapse; submassive PE causes RV dysfunction without shock.",
+      "vital_sign_patterns": {
+        "heart_rate": "Tachycardia (>100) - MOST COMMON finding (~40-50%)",
+        "respiratory_rate": "Tachypnea - second most common",
+        "spo2": "Hypoxemia may be disproportionate to exam",
+        "blood_pressure": "Hypotension (SBP <90) defines MASSIVE PE",
+        "syncope": "Present in ~10% - suggests large clot"
+      },
+      "key_labs": {
+        "d_dimer": "High sensitivity for ruling out if low pre-test probability; age-adjusted for >50y",
+        "troponin": "Elevated indicates RV injury; risk stratification",
+        "bnp": "Elevated indicates RV strain",
+        "lactate": "Elevated with hypoperfusion in massive PE"
+      },
+      "diagnostic_criteria": {
+        "guideline": "ESC 2019",
+        "pesi": {
+          "components": "Age, male sex, cancer, HF, chronic lung disease, HR \u2265110, SBP <100, RR \u226530, temp <36, AMS, SpO2 <90%",
+          "classes": "I-II low risk (1-3.5% mortality); III intermediate (3-7%); IV-V high (4-25%)"
+        },
+        "spesi": "Age >80, cancer, cardiopulmonary disease, HR \u2265110, SBP <100, SpO2 <90%. Score 0 = low risk; \u22651 = high risk",
+        "risk_stratification": {
+          "high_risk": "Hemodynamic instability \u2192 emergent reperfusion",
+          "intermediate_high": "sPESI \u22651 + RV dysfunction + elevated troponin \u2192 ICU, consider rescue reperfusion",
+          "intermediate_low": "sPESI \u22651 with RV dysfunction OR biomarker (not both)",
+          "low_risk": "sPESI 0, no RV dysfunction \u2192 consider outpatient"
+        }
+      },
+      "red_flags": [
+        "Hemodynamic instability",
+        "Syncope",
+        "RV dysfunction on echo/CTPA",
+        "Elevated troponin AND BNP",
+        "Saddle embolus",
+        "PESI Class IV-V or sPESI \u22651"
+      ],
+      "key_differentiators": {
+        "vs_ACUTE_MI": "Both cause chest pain, troponin elevation; PE has RV strain, hypoxemia, D-dimer",
+        "vs_HEART_FAILURE": "Acute HF can present similarly; echo helps distinguish",
+        "vs_PNEUMONIA": "Both cause dyspnea, hypoxemia; PE usually no fever/productive cough"
+      },
+      "sources": [
+        "Konstantinides SV et al. 2019 ESC Guidelines for Acute PE. Eur Heart J 2020;41:543-603",
+        "Aujesky D et al. PESI Derivation and Validation. Am J Respir Crit Care Med 2005"
+      ]
+    }
+  }
+}
